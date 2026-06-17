@@ -38,6 +38,7 @@ if ! command -v fzf >/dev/null 2>&1; then
 fi
 
 self="${BASH_SOURCE[0]}"
+export FZF_DEFAULT_OPTS=''
 sel=$(emit_rows | fzf --ansi --delimiter='\t' --with-nth=3,4,5 \
   --reverse --cycle --header='Claude sessions · enter: jump · ctrl-x: kill' \
   --preview="tmux capture-pane -ept {2}" --preview-window='right,62%,wrap' \
