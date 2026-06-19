@@ -13,6 +13,14 @@ get_tmux_option() {
   fi
 }
 
+# popup_dims -> "<width> <height>" for display-popup, from @claude_popup_width /
+# @claude_popup_height (defaults 90%/90%). Read with: read -r w h < <(popup_dims)
+popup_dims() {
+  printf '%s %s' \
+    "$(get_tmux_option @claude_popup_width '90%')" \
+    "$(get_tmux_option @claude_popup_height '90%')"
+}
+
 # ---------------------------------------------------------------------------
 # AI providers
 #

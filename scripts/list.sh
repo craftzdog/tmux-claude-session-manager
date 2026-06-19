@@ -6,8 +6,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$DIR/helpers.sh"
 
 prefixes_re="^($(provider_prefixes_regex))"
-w="$(get_tmux_option @claude_popup_width '90%')"
-h="$(get_tmux_option @claude_popup_height '90%')"
+read -r w h < <(popup_dims)
 
 # The session of a client attached to a managed (provider-prefixed) session —
 # i.e. the popup we are inside, if any. Empty when invoked from a normal pane.

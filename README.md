@@ -194,6 +194,14 @@ set -g @claude_cmd_claude 'claude --resume'
   first (closing it), then reopens the picker full-size on the outer host client —
   so you never end up with a cramped popup-in-popup.
 
+## Development
+
+Unit tests for the pure helpers (no tmux required — it is stubbed):
+
+```bash
+./tests/run.sh
+```
+
 ## License
 
 [MIT](LICENSE) © Takuya Matsuyama

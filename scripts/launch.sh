@@ -14,8 +14,7 @@ provider="${3:-claude}"
 
 prefix="$(provider_prefix "$provider")"
 cmd="$(provider_command "$provider")"
-w="$(get_tmux_option @claude_popup_width '90%')"
-h="$(get_tmux_option @claude_popup_height '90%')"
+read -r w h < <(popup_dims)
 
 session="${prefix}$(session_hash "$path")"
 
