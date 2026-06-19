@@ -5,22 +5,22 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 . "$DIR/helpers.sh"
 
-prefix="$(get_tmux_option @claude_session_prefix 'claude-')"
+prefixes_re="^($(provider_prefixes_regex))"
 w="$(get_tmux_option @claude_popup_width '90%')"
 h="$(get_tmux_option @claude_popup_height '90%')"
 
-# The session of a client attached to a prefixed session — i.e. the popup we are
-# inside, if any. Empty when invoked from a normal (non-popup) pane.
+# The session of a client attached to a managed (provider-prefixed) session —
+# i.e. the popup we are inside, if any. Empty when invoked from a normal pane.
 nested_session() {
   tmux list-clients -F '#{client_name} #{session_name}' 2>/dev/null |
-    awk -v p="$prefix" 'index($2, p) == 1 { print $2; exit }'
+    awk -v re="$prefixes_re" '$2 ~ re { print $2; exit }'
 }
 
-# A client NOT attached to a prefixed session — the outer client that should host
+# A client NOT attached to a managed session — the outer client that should host
 # the picker popup.
 host_client() {
   tmux list-clients -F '#{client_name} #{session_name}' 2>/dev/null |
-    awk -v p="$prefix" 'index($2, p) != 1 { print $1; exit }'
+    awk -v re="$prefixes_re" '$2 !~ re { print $1; exit }'
 }
 
 # If we are inside a session popup, close it (detach its client)

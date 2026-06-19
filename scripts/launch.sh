@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Launch (or re-attach to) a Claude session for a directory, shown in a popup.
-# Args: <dir> [origin-window-id]   (both expanded by run-shell in the binding)
+# Launch (or re-attach to) an AI session for a directory, shown in a popup.
+# Args: <dir> [origin-window-id] [provider]
+#   dir/window are expanded by run-shell in the binding; provider defaults to
+#   'claude' so the legacy prefix+y binding keeps working unchanged.
 set -uo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
@@ -8,9 +10,10 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 path="${1:-$PWD}"
 window="${2:-}"
+provider="${3:-claude}"
 
-prefix="$(get_tmux_option @claude_session_prefix 'claude-')"
-cmd="$(get_tmux_option @claude_command 'claude')"
+prefix="$(provider_prefix "$provider")"
+cmd="$(provider_command "$provider")"
 w="$(get_tmux_option @claude_popup_width '90%')"
 h="$(get_tmux_option @claude_popup_height '90%')"
 
