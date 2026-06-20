@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 # Open the session picker in a popup.
+#
+# When invoked from inside a session popup, the picker must reopen full-size on
+# the outer (host) client — a popup-in-popup would be cramped. We do the swap in
+# a single tmux command: `display-popup -C` closes any popup already on the host,
+# and the chained `display-popup` opens the picker. Running both in one command
+# queue makes tmux repaint once, so there is no flash of the underlying session
+# between closing the old popup and showing the picker. (The previous approach
+# detached the popup client and polled with sleeps, which left a visible gap.)
 set -uo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
@@ -8,38 +16,22 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 prefixes_re="^($(provider_prefixes_regex))"
 read -r w h < <(popup_dims)
 
-# The session of a client attached to a managed (provider-prefixed) session —
-# i.e. the popup we are inside, if any. Empty when invoked from a normal pane.
-nested_session() {
-  tmux list-clients -F '#{client_name} #{session_name}' 2>/dev/null |
-    awk -v re="$prefixes_re" '$2 ~ re { print $2; exit }'
-}
-
-# A client NOT attached to a managed session — the outer client that should host
-# the picker popup.
+# A client NOT attached to a managed (provider-prefixed) session — the outer
+# client that should host the picker popup.
 host_client() {
   tmux list-clients -F '#{client_name} #{session_name}' 2>/dev/null |
     awk -v re="$prefixes_re" '$2 !~ re { print $1; exit }'
 }
 
-# If we are inside a session popup, close it (detach its client)
-sess="$(nested_session)"
-if [ -n "$sess" ]; then
-  tmux detach-client -s "$sess"
-  # Wait until the session is gone
-  for _ in $(seq 1 100); do
-    [ -z "$(nested_session)" ] && break
-    sleep 0.05
-  done
-fi
-
 host="$(host_client)"
 tmux set-option -g @ai_parent "$host"
 
-# Host the picker on the outer client. -c is honored because that client has no
-# popup open now; fall back to the default client if none was found.
+# Close any popup already open on the host, then open the picker — one command
+# queue, one repaint. When invoked from a normal pane the -C is a harmless no-op.
 if [ -n "$host" ]; then
-  tmux display-popup -c "$host" -w "$w" -h "$h" -E "$DIR/picker.sh"
+  tmux display-popup -C -c "$host" \
+    \; display-popup -c "$host" -w "$w" -h "$h" -E "$DIR/picker.sh"
 else
-  tmux display-popup -w "$w" -h "$h" -E "$DIR/picker.sh"
+  tmux display-popup -C \
+    \; display-popup -w "$w" -h "$h" -E "$DIR/picker.sh"
 fi
