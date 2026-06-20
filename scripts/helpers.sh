@@ -13,6 +13,80 @@ get_tmux_option() {
   fi
 }
 
+# ---------------------------------------------------------------------------
+# AI providers
+#
+# A provider is one launchable AI CLI (Claude, Codex, OpenCode, ...). The set is
+# configurable via the @claude_providers tmux option as a space-separated list
+# of  key:command:Label  entries:
+#
+#   set -g @claude_providers 'claude:claude:Claude codex:codex:Codex'
+#
+# - key     identifies the provider and forms its session prefix ("claude-").
+# - command is what runs inside the session (defaults to key when omitted).
+# - Label   is shown in the launch menu and picker (defaults to key).
+#
+# Defaulting to just "claude" keeps behavior identical for users who never set
+# the option; add codex/opencode/etc. to opt into the multi-provider menu.
+# ---------------------------------------------------------------------------
+default_providers='claude:claude:Claude'
+
+get_providers() {
+  get_tmux_option @claude_providers "$default_providers"
+}
+
+# provider_prefix <key> -> session-name prefix, e.g. "claude-"
+provider_prefix() { printf '%s-' "$1"; }
+
+# provider_command <key> -> command to run for that provider.
+# Resolution order (first non-empty wins):
+#   1. @claude_cmd_<key>  per-provider option, may contain spaces/flags, e.g.
+#                         set -g @claude_cmd_codex 'codex --model o1'
+#   2. @claude_command    override for the claude provider (back-compat)
+#   3. the command field of the @claude_providers entry (no spaces — see header)
+#   4. the key itself
+# The per-provider option exists because @claude_providers is space-delimited and
+# therefore cannot carry a command with arguments; this option can.
+provider_command() {
+  local want="$1" entry key command override
+  override="$(tmux show-option -gqv "@claude_cmd_${want}" 2>/dev/null)"
+  [ -n "$override" ] && { printf '%s' "$override"; return; }
+  if [ "$want" = claude ]; then
+    override="$(tmux show-option -gqv @claude_command 2>/dev/null)"
+    [ -n "$override" ] && { printf '%s' "$override"; return; }
+  fi
+  for entry in $(get_providers); do
+    IFS=: read -r key command _ <<<"$entry"
+    [ "$key" = "$want" ] && { printf '%s' "${command:-$key}"; return; }
+  done
+  printf '%s' "$want"
+}
+
+# provider_of_session <session-name> -> provider key (text before the hash).
+# Session names are "<key>-<8charhash>" and keys contain no dash.
+provider_of_session() { printf '%s' "${1%-*}"; }
+
+# provider_label <key> -> human label from the providers list (defaults to key).
+provider_label() {
+  local want="$1" entry key label
+  for entry in $(get_providers); do
+    IFS=: read -r key _ label <<<"$entry"
+    [ "$key" = "$want" ] && { printf '%s' "${label:-$key}"; return; }
+  done
+  printf '%s' "$want"
+}
+
+# provider_prefixes_regex -> alternation of every provider prefix, e.g.
+# "claude-|codex-|opencode-" for anchoring grep/awk matches.
+provider_prefixes_regex() {
+  local entry key out=''
+  for entry in $(get_providers); do
+    IFS=: read -r key _ _ <<<"$entry"
+    out="${out}${out:+|}$(provider_prefix "$key")"
+  done
+  printf '%s' "$out"
+}
+
 # session_hash <string>
 # Short, stable, portable 8-char hash for deriving a session name from a path.
 # Prefers md5sum (Linux), falls back to md5 (macOS) then shasum. The trailing

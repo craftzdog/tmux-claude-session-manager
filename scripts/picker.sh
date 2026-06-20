@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Interactive picker for running Claude sessions.
+# Interactive picker for running AI sessions (across all configured providers).
 #
 #   picker.sh           fzf picker; on enter, switches the parent client to the
 #                       chosen session's origin window and resumes it in the popup.
@@ -9,15 +9,16 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 . "$DIR/helpers.sh"
 
-prefix="$(get_tmux_option @claude_session_prefix 'claude-')"
+prefixes_re="$(provider_prefixes_regex)"
 
 emit_rows() {
-  local now s state at path icon rank ago
+  local now s state at path icon rank ago provider
   now=$(date +%s)
-  tmux list-sessions -F '#{session_name}' 2>/dev/null | grep "^${prefix}" | while IFS= read -r s; do
+  tmux list-sessions -F '#{session_name}' 2>/dev/null | grep -E "^(${prefixes_re})" | while IFS= read -r s; do
     state=$(tmux show-options -qv -t "$s" @claude_state 2>/dev/null)
     at=$(tmux show-options -qv -t "$s" @claude_state_at 2>/dev/null)
     path=$(tmux display-message -p -t "$s" '#{pane_current_path}' 2>/dev/null)
+    provider=$(provider_label "$(provider_of_session "$s")")
     case "$state" in
     waiting) icon=$'\033[33m●\033[0m waiting' rank=0 ;; # yellow - needs input
     idle) icon=$'\033[32m●\033[0m idle   ' rank=1 ;;    # green  - done, your turn
@@ -25,12 +26,12 @@ emit_rows() {
     *) icon=$'\033[90m●\033[0m   ?    ' rank=2 ;;       # grey   - unknown (no hook yet)
     esac
     if [ -n "$at" ]; then ago="$(((now - at) / 60))m"; else ago='-'; fi
-    # rank \t session \t icon \t age \t path   (rank/session hidden via --with-nth)
-    printf '%s\t%s\t%s\t%5s\t%s\n' "$rank" "$s" "$icon" "$ago" "${path/#$HOME/~}"
+    # rank \t session \t provider \t icon \t age \t path  (rank/session hidden via --with-nth)
+    printf '%s\t%s\t%-9s\t%s\t%5s\t%s\n' "$rank" "$s" "$provider" "$icon" "$ago" "${path/#$HOME/~}"
     # rank asc (attention-needed floats up), then age asc so the session that
-    # finished just now sits at the top of its group. -k4,4n reads the leading
+    # finished just now sits at the top of its group. -k5,5n reads the leading
     # number of the age field ("5m" -> 5; "-" -> 0).
-  done | sort -t$'\t' -k1,1n -k4,4n
+  done | sort -t$'\t' -k1,1n -k5,5n
 }
 
 [ "${1:-}" = '--list' ] && {
@@ -45,8 +46,8 @@ fi
 
 self="${BASH_SOURCE[0]}"
 export FZF_DEFAULT_OPTS=''
-sel=$(emit_rows | fzf --ansi --delimiter='\t' --with-nth=3,4,5 \
-  --reverse --cycle --header='Claude sessions · enter: jump · ctrl-x: kill' \
+sel=$(emit_rows | fzf --ansi --delimiter='\t' --with-nth=3,4,5,6 \
+  --reverse --cycle --header='AI sessions · enter: jump · ctrl-x: kill' \
   --preview="tmux capture-pane -ept {2}" --preview-window='right,62%,wrap' \
   --bind="ctrl-x:execute-silent(tmux kill-session -t {2})+reload($self --list)")
 

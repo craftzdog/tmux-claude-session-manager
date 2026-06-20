@@ -62,7 +62,8 @@ run-shell ~/clone/path/claude_session_manager.tmux
 | Key            | Action                                                                          |
 | -------------- | ------------------------------------------------------------------------------- |
 | `prefix` + `y` | Launch (or re-attach to) a Claude session for the current directory, in a popup |
-| `prefix` + `u` | Open the session picker                                                         |
+| `prefix` + `Y` | Open the **AI provider menu** and launch the chosen provider for the directory  |
+| `prefix` + `u` | Open the session picker                                                          |
 
 Inside the picker:
 
@@ -151,22 +152,45 @@ The state machine:
 Set any of these before the plugin loads (defaults shown):
 
 ```tmux
-set -g @claude_launch_key     'y'        # prefix key: launch/open for current dir
-set -g @claude_list_key       'u'        # prefix key: open the picker
-set -g @claude_command        'claude'   # command run in new sessions
-set -g @claude_session_prefix 'claude-'  # tmux session name prefix
-set -g @claude_popup_width     '90%'     # popup width
-set -g @claude_popup_height    '90%'     # popup height
+set -g @claude_launch_key      'y'        # prefix key: launch/open Claude for current dir
+set -g @claude_launch_menu_key 'Y'        # prefix key: open the AI provider menu
+set -g @claude_list_key        'u'        # prefix key: open the picker
+set -g @claude_command         'claude'   # command for the claude provider (override)
+set -g @claude_popup_width      '90%'     # popup width
+set -g @claude_popup_height     '90%'     # popup height
+```
+
+### Multiple AI providers (optional)
+
+`prefix` + `Y` opens a menu to launch Claude, [Codex](https://github.com/openai/codex),
+[OpenCode](https://github.com/sst/opencode), or anything else you configure.
+Providers are listed in `@claude_providers` as space-separated `key:command:Label`
+entries — the default is just Claude, so nothing changes until you opt in:
+
+```tmux
+set -g @claude_providers 'claude:claude:Claude codex:codex:Codex opencode:opencode:OpenCode'
+```
+
+Each provider gets its own session prefix from its key (`claude-`, `codex-`,
+`opencode-`), so the same directory can hold one session per provider without
+collisions, and the picker lists them all with a provider column. To launch a
+provider with arguments (the list is space-delimited, so its command field can't
+hold them), use the per-provider `@claude_cmd_<key>` option:
+
+```tmux
+set -g @claude_cmd_codex 'codex --model o1'
 ```
 
 ## How it works
 
-- The **launcher** creates a detached `claude-<hash-of-dir>` tmux session running
-  `claude`, records the window it came from in `@claude_origin`, and attaches to
-  it in a popup.
+- The **launcher** creates a detached `<provider>-<hash-of-dir>` tmux session
+  running that provider's command (e.g. `claude-<hash>` running `claude`), records
+  the window it came from in `@claude_origin`, and attaches to it in a popup.
+- The **provider menu** (`prefix` + `Y`) is built from `@claude_providers`; each
+  entry launches via the same launcher with its own command and session prefix.
 - The **hooks** set `@claude_state` / `@claude_state_at` on each session as Claude
   works.
-- The **picker** lists sessions matching the prefix, reads their state and a live
+- The **picker** lists sessions matching any provider prefix, reads their state and a live
   `capture-pane` preview, and on selection moves your client to the session's
   origin window before resuming it in the popup.
 - Pressing `prefix` + `u` **from inside a session popup** detaches that popup
