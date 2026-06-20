@@ -25,7 +25,8 @@ host_client() {
     awk -v re="$prefixes_re" '$2 !~ re { print $1; exit }'
 }
 
-tmux set-option -g @ai_parent "$(host_client)"
+host="$(host_client)"
+tmux set-option -g @ai_parent "$host"
 
 caller_session=""
 [ -n "$caller" ] &&
@@ -38,7 +39,6 @@ if [ -n "$caller_session" ] && printf '%s' "$caller_session" | grep -qE "$prefix
 else
   # Normal pane: clear any stale caller so picker.sh uses the morph path.
   tmux set-option -gu @ai_caller 2>/dev/null || true
-  host="$(host_client)"
   if [ -n "$host" ]; then
     tmux display-popup -c "$host" -w "$w" -h "$h" -E "$DIR/picker.sh"
   else
