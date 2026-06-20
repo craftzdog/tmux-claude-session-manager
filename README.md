@@ -158,6 +158,7 @@ set -g @ai_list_key        'u'        # prefix key: open the picker
 set -g @ai_command         'claude'   # command for the claude provider (override)
 set -g @ai_popup_width      '90%'     # popup width
 set -g @ai_popup_height     '90%'     # popup height
+set -g @ai_picker_opts      ''        # extra fzf flags for the picker (see below)
 
 # Providers shown in the `prefix` + `Y` menu and listed by the picker.
 # Space-separated  key:command:Label  entries (command/Label optional).
@@ -181,6 +182,21 @@ contain arguments. To launch a provider with flags, use the per-provider option
 set -g @ai_cmd_codex 'codex --model o1'
 set -g @ai_cmd_claude 'claude --resume'
 ```
+
+### Customizing the picker
+
+The picker inherits your global `FZF_DEFAULT_OPTS` (theme, keybindings) and pins
+only the flags it needs for its layout — a 3/7 list/preview split and full popup
+height (`--height=100%`, which overrides a `--height` you may have set in
+`FZF_DEFAULT_OPTS`). To tweak the picker without editing the script, append flags
+via `@ai_picker_opts`; they are applied last and win over everything else:
+
+```tmux
+set -g @ai_picker_opts '--color=preview-border:6,list-border:8 --preview-window=right,60%'
+```
+
+Tokens are space-split, so use it for a list of simple flags; flag values that
+contain spaces are not supported through this option.
 
 ## How it works
 

@@ -73,6 +73,18 @@ else
   fzf_opts+=(--header='AI sessions · enter: jump · ctrl-x: kill')
 fi
 
+# User escape hatch. @ai_picker_opts is appended last, so it overrides anything
+# above (theme, --info, extra binds — even layout flags if the user insists)
+# without editing this script. Tokens are space-split, so it suits a list of
+# simple flags; values containing spaces are not supported here. The guard keeps
+# bash 3.2 (stock macOS) happy, where expanding an empty array under `set -u`
+# raises "unbound variable".
+extra_opts="$(get_opt picker_opts '')"
+if [ -n "$extra_opts" ]; then
+  read -ra extra_arr <<<"$extra_opts"
+  fzf_opts+=("${extra_arr[@]}")
+fi
+
 sel=$(emit_rows | fzf "${fzf_opts[@]}")
 
 [ -z "$sel" ] && exit 0

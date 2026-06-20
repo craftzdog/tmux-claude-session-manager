@@ -83,6 +83,14 @@ check '@ai_* takes precedence over @claude_*' 'claude --new' "$(provider_command
 TMUX_OPTS=([@claude_popup_width]='50%')
 check 'legacy @claude_popup_width alias' '50% 90%' "$(popup_dims)"
 
+# @ai_picker_opts escape hatch: empty default, resolves @ai_* then @claude_*
+TMUX_OPTS=()
+check 'picker_opts default empty' '' "$(get_opt picker_opts '')"
+TMUX_OPTS=([@ai_picker_opts]='--info=inline --color=label:6')
+check 'picker_opts @ai_*' '--info=inline --color=label:6' "$(get_opt picker_opts '')"
+TMUX_OPTS=([@claude_picker_opts]='--info=hidden')
+check 'picker_opts legacy alias' '--info=hidden' "$(get_opt picker_opts '')"
+
 # session_hash: stable 8-char, deterministic
 h1="$(session_hash /home/me/project)"
 h2="$(session_hash /home/me/project)"
