@@ -19,6 +19,10 @@ each one. This plugin gives you:
 - 🚀 **A launcher** (`prefix` + `y`) that opens/attaches a Claude session for the
   current directory.
 - ❌ **Quick kill** (`ctrl-x`) of finished sessions from the picker.
+- 🪟 **Or track Claude in your own panes** — if you run Claude as a pane inside
+  your project sessions (several per session) rather than via the launcher, set
+  `@claude_scope 'pane'` and the picker lists those instead. See
+  [Scope](#scope-dedicated-sessions-vs-your-own-panes).
 
 Status is optional: without the hooks the picker still lists, previews, jumps,
 and kills — sessions just show `?` instead of a color.
@@ -155,20 +159,43 @@ set -g @claude_launch_key     'y'        # prefix key: launch/open for current d
 set -g @claude_list_key       'u'        # prefix key: open the picker
 set -g @claude_command        'claude'   # command run in new sessions
 set -g @claude_session_prefix 'claude-'  # tmux session name prefix
+set -g @claude_scope          'session'  # what the picker lists: session | pane | auto
 set -g @claude_popup_width     '90%'     # popup width
 set -g @claude_popup_height    '90%'     # popup height
 ```
+
+### Scope: dedicated sessions vs. your own panes
+
+By default the picker lists the dedicated `claude-*` sessions created by the
+launcher (`prefix` + `y`). If you instead run Claude as a **pane inside your own
+project sessions** — often several per session — set `@claude_scope`:
+
+| Value       | The picker lists…                                                                 |
+| ----------- | --------------------------------------------------------------------------------- |
+| `session`   | (default) dedicated `claude-*` sessions created by the launcher                   |
+| `pane`      | every pane whose foreground command is `claude`, across **all** tmux sessions     |
+| `auto`      | `session` if any `claude-*` session exists, otherwise `pane`                       |
+
+In `pane` scope, `enter` switches your client to that pane's session/window and
+focuses it (no popup overlay), and `ctrl-x` kills just that **pane** (not the
+whole session). Panes are matched against `@claude_command` (the basename), so if
+your Claude runs under a wrapper that shows up as a different command, set
+`@claude_command` to match.
 
 ## How it works
 
 - The **launcher** creates a detached `claude-<hash-of-dir>` tmux session running
   `claude`, records the window it came from in `@claude_origin`, and attaches to
   it in a popup.
-- The **hooks** set `@claude_state` / `@claude_state_at` on each session as Claude
-  works.
-- The **picker** lists sessions matching the prefix, reads their state and a live
-  `capture-pane` preview, and on selection moves your client to the session's
-  origin window before resuming it in the popup.
+- The **hooks** set `@claude_state` / `@claude_state_at` as Claude works — on both
+  the pane (via `set-option -p`) and its session. The per-pane copy lets several
+  Claude panes in one session track state independently; the per-session copy
+  keeps `session` scope working unchanged.
+- The **picker** lists sessions matching the prefix (or, in `pane` scope, panes
+  running `claude`), reads their state and a live `capture-pane` preview, and on
+  selection jumps to the chosen Claude — for sessions, moving your client to the
+  origin window and resuming in the popup; for panes, switching to the pane's
+  window and focusing it.
 - Pressing `prefix` + `u` **from inside a session popup** detaches that popup
   first (closing it), then reopens the picker full-size on the outer host client —
   so you never end up with a cramped popup-in-popup.
