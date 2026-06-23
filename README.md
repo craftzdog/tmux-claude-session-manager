@@ -3,14 +3,16 @@
 [![screenshot](./docs/screenshot.jpg)](https://youtu.be/NnTV6r4l5D0)
 
 Run many [Claude Code](https://claude.com/claude-code) sessions across your
-projects, each in its own tmux session — then **list them, see which are done
-vs. still working, and jump to one** from a single popup.
+projects — then **list them, see which are done vs. still working, and jump to
+one** from a single popup.
 
-If you launch Claude per-directory (one nested session per project), you quickly
-end up with a dozen of them and no way to tell which are finished without opening
-each one. This plugin gives you:
+If you run Claude in lots of places, you quickly end up with a dozen of them and
+no way to tell which are finished without opening each one. This plugin gives
+you:
 
-- 🔢 **A central picker** (`prefix` + `u`) listing every running Claude session.
+- 🔢 **A central picker** (`prefix` + `u`) listing every running Claude session —
+  or, with [`pane` discovery](#discovery-modes), every pane running Claude,
+  however you started it.
 - 🟢 **Live status** per session — `working` / `waiting` / `idle` — driven by
   Claude Code hooks, so you instantly see which need you.
 - 👁️ **A live preview** of each session's screen right in the picker.
@@ -74,13 +76,33 @@ Inside the picker:
 
 Sessions needing your attention (`waiting`, `idle`) sort to the top.
 
+## Discovery modes
+
+`@claude_discover` controls **what the picker lists** (default `session`):
+
+- **`session`** — tmux sessions whose name starts with `@claude_session_prefix`
+  (`claude-`). This is the launcher model: each `prefix` + `y` creates one
+  `claude-<hash>` session. State is stamped per session, and `enter` resumes the
+  session in the popup.
+- **`pane`** — every tmux pane whose foreground command is `@claude_command`
+  (`claude`), **however it was started** — this plugin's launcher, a tmuxinator
+  layout, or a manual `claude` in any window or pane. State is stamped per pane,
+  so several Claudes sharing one session each report independently, and `enter`
+  switches your client to the pane's window and selects it.
+
+Pick pane discovery with:
+
+```tmux
+set -g @claude_discover 'pane'
+```
+
 ## Status setup (optional, recommended)
 
 Status comes from [Claude Code hooks](https://code.claude.com/docs/en/hooks)
-that stamp each session's state onto its tmux session. Add the following to your
-Claude Code settings (`~/.claude/settings.json`), merging into any existing
-`hooks` block. Adjust the path if your plugins live elsewhere (e.g.
-`~/.tmux/plugins/...`):
+that stamp each session's state onto its tmux session (or pane, with
+`@claude_discover 'pane'`). Add the following to your Claude Code settings
+(`~/.claude/settings.json`), merging into any existing `hooks` block. Adjust the
+path if your plugins live elsewhere (e.g. `~/.tmux/plugins/...`):
 
 ```json
 {
@@ -154,7 +176,8 @@ Set any of these before the plugin loads (defaults shown):
 set -g @claude_launch_key     'y'        # prefix key: launch/open for current dir
 set -g @claude_list_key       'u'        # prefix key: open the picker
 set -g @claude_command        'claude'   # command run in new sessions
-set -g @claude_session_prefix 'claude-'  # tmux session name prefix
+set -g @claude_discover       'session'  # 'session' | 'pane' — what the picker lists
+set -g @claude_session_prefix 'claude-'  # tmux session name prefix (session mode)
 set -g @claude_popup_width     '90%'     # popup width
 set -g @claude_popup_height    '90%'     # popup height
 ```
@@ -164,11 +187,12 @@ set -g @claude_popup_height    '90%'     # popup height
 - The **launcher** creates a detached `claude-<hash-of-dir>` tmux session running
   `claude`, records the window it came from in `@claude_origin`, and attaches to
   it in a popup.
-- The **hooks** set `@claude_state` / `@claude_state_at` on each session as Claude
-  works.
-- The **picker** lists sessions matching the prefix, reads their state and a live
-  `capture-pane` preview, and on selection moves your client to the session's
-  origin window before resuming it in the popup.
+- The **hooks** set `@claude_state` / `@claude_state_at` on each session — or each
+  pane, in `pane` mode — as Claude works.
+- The **picker** lists matching sessions (or, in `pane` mode, every pane running
+  `claude`), reads their state and a live `capture-pane` preview, and on selection
+  moves your client to the session's origin window before resuming it in the popup
+  — or, in `pane` mode, switches to the chosen pane.
 - Pressing `prefix` + `u` **from inside a session popup** detaches that popup
   first (closing it), then reopens the picker full-size on the outer host client —
   so you never end up with a cramped popup-in-popup.
