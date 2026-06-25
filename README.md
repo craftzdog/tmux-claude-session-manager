@@ -61,7 +61,7 @@ run-shell ~/clone/path/claude_session_manager.tmux
 
 | Key            | Action                                                                          |
 | -------------- | ------------------------------------------------------------------------------- |
-| `prefix` + `y` | Launch (or re-attach to) a Claude session for the current directory, in a popup |
+| `prefix` + `y` | Toggle a Claude session popup for the current directory (launch/re-attach, or close if already open) |
 | `prefix` + `u` | Open the session picker                                                         |
 
 Inside the picker:
@@ -163,7 +163,9 @@ set -g @claude_popup_height    '90%'     # popup height
 
 - The **launcher** creates a detached `claude-<hash-of-dir>` tmux session running
   `claude`, records the window it came from in `@claude_origin`, and attaches to
-  it in a popup.
+  it in a popup. Pressing the launch key again **from inside that popup** detaches
+  it (closing the popup), so the same key toggles the popup open and shut while the
+  Claude session keeps running in the background.
 - The **hooks** set `@claude_state` / `@claude_state_at` on each session as Claude
   works.
 - The **picker** lists sessions matching the prefix, reads their state and a live
