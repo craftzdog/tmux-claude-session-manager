@@ -11,6 +11,7 @@ CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 launch_key="$(get_tmux_option @claude_launch_key 'y')"
 list_key="$(get_tmux_option @claude_list_key 'u')"
+kill_on_origin_close="$(get_tmux_option @claude_kill_on_origin_close 'off')"
 
 # Launch (or re-attach to) a Claude session for the current pane's directory.
 # #{pane_current_path} / #{window_id} are expanded by run-shell before the args
@@ -22,3 +23,11 @@ tmux bind-key "$launch_key" \
 # closes that popup first so the picker opens full-size on the outer client.
 tmux bind-key "$list_key" \
   run-shell "$CURRENT_DIR/scripts/list.sh '#{client_name}'"
+
+# Optional: kill a Claude session when the window it was launched from closes,
+# instead of leaving it running in the background. Off by default to preserve
+# the resume-later workflow; enable with `set -g @claude_kill_on_origin_close on`.
+if [ "$kill_on_origin_close" = 'on' ]; then
+  tmux set-hook -g window-unlinked \
+    "run-shell '$CURRENT_DIR/scripts/cleanup.sh'"
+fi

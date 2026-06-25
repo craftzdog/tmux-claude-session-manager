@@ -157,7 +157,13 @@ set -g @claude_command        'claude'   # command run in new sessions
 set -g @claude_session_prefix 'claude-'  # tmux session name prefix
 set -g @claude_popup_width     '90%'     # popup width
 set -g @claude_popup_height    '90%'     # popup height
+set -g @claude_kill_on_origin_close 'off' # kill a session when its origin window closes
 ```
+
+By default a Claude session keeps running in the background after you dismiss its
+popup, so you can resume it later. Set `@claude_kill_on_origin_close 'on'` to tie a
+session's lifetime to the window it was launched from: when that window closes, the
+session is killed instead of lingering.
 
 ## How it works
 
@@ -174,6 +180,9 @@ set -g @claude_popup_height    '90%'     # popup height
 - Pressing `prefix` + `u` **from inside a session popup** detaches that popup
   first (closing it), then reopens the picker full-size on the outer host client —
   so you never end up with a cramped popup-in-popup.
+- When `@claude_kill_on_origin_close` is `on`, a `window-unlinked` hook runs
+  `cleanup.sh` on every window close, which kills any `claude-` session whose
+  `@claude_origin` window no longer exists.
 
 ## License
 
