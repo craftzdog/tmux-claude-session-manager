@@ -153,6 +153,8 @@ Set any of these before the plugin loads (defaults shown):
 ```tmux
 set -g @claude_launch_key     'y'        # prefix key: launch/open for current dir
 set -g @claude_list_key       'u'        # prefix key: open the picker
+set -g @claude_launch_prefix  'on'       # 'off' = bind launch key without prefix (pair with a modifier, e.g. M-y)
+set -g @claude_list_prefix    'on'       # 'off' = bind picker key without prefix (pair with a modifier, e.g. M-u)
 set -g @claude_command        'claude'   # command run in new sessions
 set -g @claude_session_prefix 'claude-'  # tmux session name prefix
 set -g @claude_popup_width     '90%'     # popup width
