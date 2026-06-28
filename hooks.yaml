@@ -1,0 +1,17 @@
+# Example opencode hooks configuration for tmux-opencode-session-manager
+#
+# Copy this file to ~/.config/opencode/hook/hooks.yaml
+# or to your project's .opencode/hook/hooks.yaml
+#
+# These hooks track session state (busy/idle) for the tmux picker.
+
+hooks:
+  - id: opencode-state-busy
+    event: tool.before.*
+    actions:
+      - bash: "$HOME/.config/tmux/plugins/tmux-opencode-session-manager/scripts/state.sh busy"
+
+  - id: opencode-state-idle
+    event: session.idle
+    actions:
+      - bash: "$HOME/.config/tmux/plugins/tmux-opencode-session-manager/scripts/state.sh idle"

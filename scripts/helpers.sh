@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared helpers for tmux-claude-session-manager.
+# Shared helpers for tmux-opencode-session-manager.
 
 # get_tmux_option <option-name> <default>
 # Echoes the global tmux option value, or the default when unset/empty.

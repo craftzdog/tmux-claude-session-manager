@@ -5,9 +5,9 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 . "$DIR/helpers.sh"
 
-prefix="$(get_tmux_option @claude_session_prefix 'claude-')"
-w="$(get_tmux_option @claude_popup_width '90%')"
-h="$(get_tmux_option @claude_popup_height '90%')"
+prefix="$(get_tmux_option @opencode_session_prefix 'opencode-')"
+w="$(get_tmux_option @opencode_popup_width '90%')"
+h="$(get_tmux_option @opencode_popup_height '90%')"
 
 # The session of a client attached to a prefixed session — i.e. the popup we are
 # inside, if any. Empty when invoked from a normal (non-popup) pane.
@@ -35,7 +35,7 @@ if [ -n "$sess" ]; then
 fi
 
 host="$(host_client)"
-tmux set-option -g @claude_parent "$host"
+tmux set-option -g @opencode_parent "$host"
 
 # Host the picker on the outer client. -c is honored because that client has no
 # popup open now; fall back to the default client if none was found.
