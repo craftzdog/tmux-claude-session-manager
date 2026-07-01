@@ -10,6 +10,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$DIR/helpers.sh"
 
 prefix="$(get_tmux_option @claude_session_prefix 'claude-')"
+vim_keys="$(get_tmux_option @claude_vim_keys '0')"
 
 emit_rows() {
   local now s state at path icon rank ago
@@ -45,10 +46,26 @@ fi
 
 self="${BASH_SOURCE[0]}"
 export FZF_DEFAULT_OPTS=''
-sel=$(emit_rows | fzf --ansi --delimiter='\t' --with-nth=3,4,5 \
-  --reverse --cycle --header='Claude sessions · enter: jump · ctrl-x: kill' \
-  --preview="tmux capture-pane -ept {2}" --preview-window='right,62%,wrap' \
-  --bind="ctrl-x:execute-silent(tmux kill-session -t {2})+reload($self --list)")
+
+if [ "$vim_keys" = "1" ]; then
+  sel=$(emit_rows | fzf --ansi --delimiter=$'\t' --with-nth=3,4,5 \
+    --reverse --cycle --header='Claude sessions · enter/l: jump · ctrl-x: kill · j/k: nav · i: search · esc: back/close' \
+    --preview="tmux capture-pane -ept {2}" --preview-window='right,62%,wrap' \
+    --prompt='nav> ' \
+    --bind="ctrl-x:execute-silent(tmux kill-session -t {2})+reload($self --list)" \
+    --bind="start:disable-search" \
+    --bind="j:down" \
+    --bind="k:up" \
+    --bind="l:accept" \
+    --bind="h:abort" \
+    --bind="i:enable-search+change-prompt(search> )" \
+    --bind='esc:transform:[ "$FZF_PROMPT" = "search> " ] && echo "disable-search+change-prompt(nav> )" || echo "abort"')
+else
+  sel=$(emit_rows | fzf --ansi --delimiter=$'\t' --with-nth=3,4,5 \
+    --reverse --cycle --header='Claude sessions · enter: jump · ctrl-x: kill' \
+    --preview="tmux capture-pane -ept {2}" --preview-window='right,62%,wrap' \
+    --bind="ctrl-x:execute-silent(tmux kill-session -t {2})+reload($self --list)")
+fi
 
 [ -z "$sel" ] && exit 0
 target=$(printf '%s' "$sel" | cut -f2)

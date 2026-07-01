@@ -157,7 +157,13 @@ set -g @claude_command        'claude'   # command run in new sessions
 set -g @claude_session_prefix 'claude-'  # tmux session name prefix
 set -g @claude_popup_width     '90%'     # popup width
 set -g @claude_popup_height    '90%'     # popup height
+set -g @claude_vim_keys        '0'       # '1' enables vim-style keys in the picker
 ```
+
+With `@claude_vim_keys '1'`, the picker starts in a navigation mode: `j`/`k` move
+down/up, `l` (or `enter`) jumps to the session, `h` closes the picker, and `i`
+starts fuzzy search. Press `esc` to leave search and return to navigation, or
+`esc` again to close the picker.
 
 ## How it works
 
