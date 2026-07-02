@@ -11,6 +11,8 @@ window="${2:-}"
 
 prefix="$(get_tmux_option @claude_session_prefix 'claude-')"
 cmd="$(get_tmux_option @claude_command 'claude')"
+args="$(get_tmux_option @claude_args '')"
+[ -n "$args" ] && cmd="$cmd $args"
 w="$(get_tmux_option @claude_popup_width '90%')"
 h="$(get_tmux_option @claude_popup_height '90%')"
 

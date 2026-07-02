@@ -154,16 +154,18 @@ Set any of these before the plugin loads (defaults shown):
 set -g @claude_launch_key     'y'        # prefix key: launch/open for current dir
 set -g @claude_list_key       'u'        # prefix key: open the picker
 set -g @claude_command        'claude'   # command run in new sessions
+set -g @claude_args           ''         # extra args appended to the command
 set -g @claude_session_prefix 'claude-'  # tmux session name prefix
 set -g @claude_popup_width     '90%'     # popup width
 set -g @claude_popup_height    '90%'     # popup height
 set -g @claude_vim_keys        '0'       # '1' enables vim-style keys in the picker
 ```
 
-With `@claude_vim_keys '1'`, the picker starts in a navigation mode: `j`/`k` move
-down/up, `l` (or `enter`) jumps to the session, `h` closes the picker, and `i`
-starts fuzzy search. Press `esc` to leave search and return to navigation, or
-`esc` again to close the picker.
+For example, to skip permission prompts in launched sessions:
+
+```tmux
+set -g @claude_args '--dangerously-skip-permissions'
+```
 
 ## How it works
 
