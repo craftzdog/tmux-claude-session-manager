@@ -18,13 +18,17 @@ h="$(get_tmux_option @claude_popup_height '90%')"
 
 session="${prefix}$(session_hash "$path")"
 
-if [[ "$(tmux display-message -p '#S')" == "$prefix"* ]]; then
+# Marker-based check, not a $prefix name match, so a user's own session
+# named "$prefix*" doesn't false-positive here.
+if [ "$(tmux show-options -qv -t "$(tmux display-message -p '#S')" @claude_popup 2>/dev/null)" = 1 ]; then
   tmux display-message '🫪 Popup window already open'
   exit 0
 fi
 
-tmux has-session -t "$session" 2>/dev/null ||
+if ! tmux has-session -t "$session" 2>/dev/null; then
   tmux new-session -d -s "$session" -c "$path" "$cmd"
+  tmux set-option -t "$session" @claude_popup 1
+fi
 
 # Record which window launched it, so the picker can jump back here later.
 [ -n "$window" ] && tmux set-option -t "$session" @claude_origin "$window"
