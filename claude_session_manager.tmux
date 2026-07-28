@@ -22,3 +22,9 @@ tmux bind-key "$launch_key" \
 # closes that popup first so the picker opens full-size on the outer client.
 tmux bind-key "$list_key" \
   run-shell "$CURRENT_DIR/scripts/list.sh '#{q:client_name}'"
+
+# Background sound watcher: plays a sound when a Claude session starts
+# waiting on you, and another when one finishes while you're not looking at
+# it. notify.sh is its own singleton (pidfile-guarded) and checks
+# @claude_notify_sound itself, so it's safe to fire on every config reload.
+tmux run-shell -b "$CURRENT_DIR/scripts/notify.sh"
