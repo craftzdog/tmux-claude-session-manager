@@ -27,7 +27,7 @@ the picker reads it — there are no hooks to install.
 - **tmux ≥ 3.2** (for `display-popup`)
 - **[fzf](https://github.com/junegunn/fzf)** — the picker UI
 - **[jq](https://jqlang.org/)** — parses `Codex agents --json`
-- **[Codex Code](https://Codex.com/Codex-code)** ≥ 2.1.139 — for the
+- **[Codex](https://openai.com/codex)** ≥ 2.1.139 — for the
   `Codex agents` command (`Codex --version` to check)
 - bash; macOS or Linux
 
