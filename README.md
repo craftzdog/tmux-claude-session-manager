@@ -1,7 +1,5 @@
 # tmux-claude-session-manager
 
-[![screenshot](./docs/screenshot.jpg)](https://youtu.be/NnTV6r4l5D0)
-
 Run many [Claude Code](https://claude.com/claude-code) sessions across your
 projects, each in its own tmux session — then **list them, see which are done
 vs. still working, and jump to one** from a single popup.
