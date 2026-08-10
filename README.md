@@ -98,7 +98,6 @@ set -g @claude_popup_height    '90%'     # popup height
 set -g @claude_fzf_options    ''         # extra options passed to the fzf picker
 
 set -g @claude_notify_sound            'on'  # play a sound on state changes (on/off)
-set -g @claude_notify_interval         '2'   # seconds between background status polls
 set -g @claude_notify_attention_sound  '/System/Library/Sounds/Ping.aiff'   # played when a session starts waiting on you
 set -g @claude_notify_done_sound       '/System/Library/Sounds/Glass.aiff'  # played when a session finishes out of view
 ```
@@ -167,16 +166,16 @@ so tmux stores a literal `$` (in a single-quoted value, use a bare
   window it was launched from, while a **loose** one (any other pane) is focused in
   place. `ctrl-x` kills the Claude process itself: a dedicated session dies with
   its last window, and a loose pane keeps the shell that hosted it.
-- **`notify.sh`** is a long-lived background loop, launched once when the
-  plugin loads, that polls `claude agents --json` every
-  `@claude_notify_interval` seconds and plays a sound on state *transitions*
-  (the picker itself only computes state on demand, when opened). A session
-  entering `waiting` always plays the attention sound, even if you're looking
-  at it. A session going `busy`/`waiting` → `idle` plays the done sound only
-  if that pane isn't the one currently on screen for an attached client —
-  finishing work you're already watching doesn't need a chime. A pidfile
-  keeps config reloads (`prefix` + `r`) from stacking up duplicate loops, and
-  the loop exits on its own once the tmux server under it is gone.
+- Sound notifications are event-driven, not polled. `install-notify-hooks.sh`
+  runs once when the plugin loads (idempotent, safe on every config reload)
+  and registers `hook-notify.sh` as a Claude Code `Notification`/`Stop` hook
+  in `~/.claude/settings.json`. Claude Code then invokes it directly on the
+  transitions themselves — no background loop, no polling `claude agents
+  --json`. A session entering `waiting` always plays the attention sound,
+  even if you're looking at it. A session finishing (`Stop`) plays the done
+  sound only if its pane isn't the one currently on screen for an attached
+  client — found via the `$TMUX_PANE` the hook inherits from the shell that
+  launched `claude`, so no pid/tty/pane join is needed.
 - Pressing `prefix` + `u` **from inside a session popup** detaches that popup
   first (closing it), then reopens the picker full-size on the outer host client —
   so you never end up with a cramped popup-in-popup.

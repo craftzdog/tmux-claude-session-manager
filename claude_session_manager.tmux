@@ -23,8 +23,11 @@ tmux bind-key "$launch_key" \
 tmux bind-key "$list_key" \
   run-shell "$CURRENT_DIR/scripts/list.sh '#{q:client_name}'"
 
-# Background sound watcher: plays a sound when a Claude session starts
-# waiting on you, and another when one finishes while you're not looking at
-# it. notify.sh is its own singleton (pidfile-guarded) and checks
-# @claude_notify_sound itself, so it's safe to fire on every config reload.
-tmux run-shell -b "$CURRENT_DIR/scripts/notify.sh"
+# Sound notifications: plays a sound when a Claude session starts waiting
+# on you, and another when one finishes while you're not looking at it.
+# Event-driven via Claude Code hooks (scripts/hook-notify.sh), not a poll
+# loop; this just (re)registers those hooks in ~/.claude/settings.json.
+# Idempotent, so it's safe to fire on every config reload. The hooks stay
+# registered even with @claude_notify_sound off; hook-notify.sh checks that
+# option itself and no-ops rather than playing anything.
+"$CURRENT_DIR/scripts/install-notify-hooks.sh" --apply >/dev/null 2>&1 &
