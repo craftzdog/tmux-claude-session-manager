@@ -109,6 +109,8 @@ set -g @claude_args '--dangerously-skip-permissions'
 
 ### Making Claude ring the bell
 
+![bell-forwarding](./docs/bell-forwarding.png)
+
 Forwarding relays a bell; it cannot create one. Claude Code has to emit it, and
 two settings decide that — they live in **different files**.
 
