@@ -65,6 +65,7 @@ run-shell ~/clone/path/claude_session_manager.tmux
 | Key            | Action                                                                          |
 | -------------- | ------------------------------------------------------------------------------- |
 | `prefix` + `y` | Launch (or re-attach to) a Claude session for the current directory, in a popup |
+| `prefix` + `d` | Close the popup and go back to your window, Claude session keeps running        |
 | `prefix` + `u` | Open the agent picker                                                           |
 
 Inside the picker:
