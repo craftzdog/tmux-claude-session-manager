@@ -22,3 +22,12 @@ tmux bind-key "$launch_key" \
 # closes that popup first so the picker opens full-size on the outer client.
 tmux bind-key "$list_key" \
   run-shell "$CURRENT_DIR/scripts/list.sh '#{q:client_name}'"
+
+# Forward a bell from a dedicated session to its origin window's pane, so
+# tmux's own bell machinery (window-status-bell-style, and terminal
+# passthrough when that window is visible) picks it up even though the
+# session that rang is a separate session from the origin.
+if [ "$(get_tmux_option @claude_forward_bell 'on')" = 'on' ]; then
+  tmux set-hook -g alert-bell \
+    "run-shell -b \"$CURRENT_DIR/scripts/bell.sh '#{q:hook_session_name}'\""
+fi

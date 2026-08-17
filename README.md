@@ -20,6 +20,9 @@ each one. This plugin gives you:
 - 🚀 **A launcher** (`prefix` + `y`) that opens/attaches a Claude session for the
   current directory.
 - ❌ **Quick kill** (`ctrl-x`) of a finished agent from the picker.
+- 🔔 **Bell forwarding** — a bell in a dedicated session highlights the window
+  you launched it from, so you notice even without opening the picker
+  ([one-time Claude Code setup](#making-claude-ring-the-bell)).
 
 Status needs no configuration. Claude Code publishes each agent's own state and
 the picker reads it — there are no hooks to install.
@@ -95,6 +98,7 @@ set -g @claude_session_prefix 'claude-'  # tmux session name prefix
 set -g @claude_popup_width     '90%'     # popup width
 set -g @claude_popup_height    '90%'     # popup height
 set -g @claude_fzf_options    ''         # extra options passed to the fzf picker
+set -g @claude_forward_bell   'on'       # highlight the origin window on a bell
 ```
 
 For example, to skip permission prompts in launched sessions:
@@ -102,6 +106,72 @@ For example, to skip permission prompts in launched sessions:
 ```tmux
 set -g @claude_args '--dangerously-skip-permissions'
 ```
+
+### Making Claude ring the bell
+
+Forwarding relays a bell; it cannot create one. Claude Code has to emit it, and
+two settings decide that — they live in **different files**.
+
+**How** it notifies — `~/.claude/settings.json`:
+
+```json
+{
+  "preferredNotifChannel": "terminal_bell"
+}
+```
+
+Only `terminal_bell` and `iterm2_with_bell` write a real `\a`. `iterm2`, `kitty`
+and `ghostty` send escape sequences that tmux does not count as a bell,
+`notifications_disabled` sends nothing, and the default `auto` picks by terminal —
+so pin it.
+
+**When** it notifies — `~/.claude.json`, the global config (`settings.json`
+ignores this key and drops it silently):
+
+```json
+{
+  "messageIdleNotifThresholdMs": 0
+}
+```
+
+Claude rings once it has sat idle this long. The default is 60000, long enough
+that you'd normally have gone back to look before it fires; `0` rings the moment a
+turn ends.
+
+#### Or ring it from a hook
+
+A hook does the same job, and is the way to keep the bell while pointing
+`preferredNotifChannel` at an OS-notification channel instead. In
+`~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "printf '\\a' > /dev/tty 2>/dev/null || { [ -n \"$TMUX_PANE\" ] && printf '\\a' > \"$(tmux display-message -p -t \"$TMUX_PANE\" '#{pane_tty}' 2>/dev/null)\" 2>/dev/null; } || true"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+`Stop` fires the moment a turn ends, with no idle timer involved. The bell goes to
+`/dev/tty` — the hook's controlling terminal, which inside tmux is the pane's own
+pty, exactly where Claude's built-in bell would land. The `$TMUX_PANE` branch
+covers a hook running without a controlling terminal, resolving the pane's tty
+through tmux instead; the trailing `|| true` keeps a failed bell from failing the
+hook.
+
+Use the same command under `Notification` with the `permission_prompt` matcher to
+ring when Claude asks for permission, or under `PreToolUse` matching
+`AskUserQuestion` to ring when it asks you a question.
 
 ### Customizing the fzf picker
 
@@ -164,6 +234,18 @@ so tmux stores a literal `$` (in a single-quoted value, use a bare
 - Pressing `prefix` + `u` **from inside a session popup** detaches that popup
   first (closing it), then reopens the picker full-size on the outer host client —
   so you never end up with a cramped popup-in-popup.
+- **Bell forwarding**: a dedicated session is a separate tmux session, so a bell
+  inside one is invisible to the window that launched it — tmux's own bell
+  handling only looks within a single session's windows. A global `alert-bell`
+  hook catches every bell server-wide, and for one from a `claude-*` session,
+  `bell.sh` writes it into the origin window's own pane. tmux then treats it as
+  if that pane rang the bell itself: the origin window gets the normal
+  `window-status-bell-style` highlight, and if it's the window currently on
+  screen (or `bell-action` is set to relay background bells), your terminal's
+  own bell/tab indicator fires too. What rings in the first place is Claude
+  Code's own notification config — see
+  [Making Claude ring the bell](#making-claude-ring-the-bell). Set
+  `@claude_forward_bell 'off'` to disable.
 
 ## License
 
