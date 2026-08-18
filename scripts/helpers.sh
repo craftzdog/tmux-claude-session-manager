@@ -38,21 +38,56 @@ file_mtime() {
   stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null
 }
 
-# claude_transcript_mtime <session-id>
-# Epoch seconds of the last write to that Claude session's transcript — i.e. when
-# the agent last did anything. `claude agents --json` reports only `startedAt`,
-# never a last-activity time, so the transcript's mtime stands in for it.
+# reverse_lines <path>
+# Stream a file last line first. GNU coreutils ships `tac`, BSD/macOS ships
+# `tail -r`; neither exists on the other, so the fallback is unambiguous.
+reverse_lines() {
+  tac "$1" 2>/dev/null || tail -r "$1" 2>/dev/null
+}
+
+# claude_transcript_path <session-id>
+# Path to that session's transcript, or empty when it cannot be found.
 #
 # Found by glob so we never have to reproduce Claude's cwd -> project-slug
-# encoding. The path is an internal Claude Code detail and may move; an empty
-# result just renders the age column as '-'.
-claude_transcript_mtime() {
+# encoding. The layout is an internal Claude Code detail and may move; every
+# caller degrades to a blank column rather than failing.
+claude_transcript_path() {
   local base f
   base="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
   for f in "$base"/projects/*/"$1".jsonl; do
     [ -f "$f" ] && {
-      file_mtime "$f"
+      printf '%s' "$f"
       return
     }
   done
+}
+
+# claude_transcript_mtime <transcript-path>
+# Epoch seconds of the last write to a session's transcript — i.e. when the agent
+# last did anything. `claude agents --json` reports only `startedAt`, never a
+# last-activity time, so the transcript's mtime stands in for it.
+claude_transcript_mtime() {
+  [ -n "$1" ] && file_mtime "$1"
+}
+
+# claude_transcript_title <transcript-path>
+# The session's current AI-generated title. Claude Code appends an `ai-title`
+# record whenever its sense of the conversation's topic changes, so the last one
+# wins — hence reading the file backwards and stopping at the first hit.
+#
+# Parsed with jq rather than a regex because a title may legitimately contain a
+# quote, which a "[^"]*" match would truncate mid-word. Tabs and newlines are
+# squeezed out because these rows are TSV.
+#
+# The match is anchored: every transcript record is one JSON object per line, and
+# an unanchored search would also hit message records that merely quote the string
+# — a session whose own transcript discusses ai-title would shadow its real title
+# with a record that has no .aiTitle, blanking the column.
+claude_transcript_title() {
+  [ -n "$1" ] || return
+  reverse_lines "$1" |
+    grep -m1 '^{"type":"ai-title"' |
+    jq -r '.aiTitle // empty' 2>/dev/null |
+    tr '\t\n' '  ' |
+    sed 's/[[:space:]]*$//'
 }
