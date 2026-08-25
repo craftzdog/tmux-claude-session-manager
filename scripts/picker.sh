@@ -35,8 +35,15 @@ fzf_options="$(get_tmux_option @claude_fzf_options '')"
 # ctrl-x kills the Claude process itself: a dedicated session dies with its last
 # window, while a loose pane keeps the shell that hosted it. The reload waits a
 # beat so the supervisor has dropped the agent from `claude agents --json`.
+#
+# --sync because agents.sh feeds fzf through a pipe: without it fzf paints an
+# interactive but *empty* picker at t=0 and only fills it once agents.sh returns.
+# Arrow keys pressed in that window are no-ops against zero rows and are lost,
+# while letters survive into the query — so the picker looks like it ignores the
+# arrow keys, the more so the busier the machine. It goes before extra_opts so
+# @claude_fzf_options can still override it with --no-sync.
 sel=$("$DIR/agents.sh" | fzf --ansi --delimiter='\t' --with-nth=5,6,7,8 \
-  --reverse --cycle --header='Claude agents · enter: jump · ctrl-x: kill' \
+  --reverse --cycle --sync --header='Claude agents · enter: jump · ctrl-x: kill' \
   --preview='tmux capture-pane -ept {2}' --preview-window='up,70%,follow' \
   --bind="ctrl-x:execute-silent(kill {3})+reload(sleep 0.3; $self --list)" \
   ${extra_opts[@]+"${extra_opts[@]}"})
