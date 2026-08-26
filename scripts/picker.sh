@@ -2,7 +2,8 @@
 # Interactive picker for running Claude agents.
 #
 #   picker.sh           fzf picker; on enter, jumps to the chosen agent.
-#   picker.sh --list    print the rows only (used by fzf's ctrl-x reload).
+#   picker.sh --list    print the rows and refresh the cache (used by fzf's
+#                       async initial load and by the ctrl-x reload).
 #
 # Rows come from agents.sh, which pairs each running Claude with the tmux pane it
 # occupies. Two kinds of row jump differently:
@@ -14,7 +15,15 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 . "$DIR/helpers.sh"
 
-[ "${1:-}" = '--list' ] && exec "$DIR/agents.sh"
+cache="${TMPDIR:-/tmp}/tmux-claude-agents-$(id -u).cache"
+
+if [ "${1:-}" = '--list' ]; then
+  tmp="$cache.$$"
+  "$DIR/agents.sh" >"$tmp" 2>/dev/null
+  mv -f "$tmp" "$cache" 2>/dev/null || rm -f "$tmp"
+  cat "$cache" 2>/dev/null
+  exit 0
+fi
 
 for tool in fzf jq claude; do
   command -v "$tool" >/dev/null 2>&1 || {
@@ -32,13 +41,25 @@ extra_opts=()
 fzf_options="$(get_tmux_option @claude_fzf_options '')"
 [ -n "$fzf_options" ] && eval "extra_opts=($fzf_options)"
 
+# Load the session list asynchronously
+list_cmd=("$self" --list)
+sync_opts=()
+now=$(date +%s)
+mtime=$(file_mtime "$cache")
+if [ -s "$cache" ] && [ -n "$mtime" ] && [ $((now - mtime)) -lt 600 ]; then
+  list_cmd=(cat "$cache")
+  sync_opts=(--bind "load:unbind(load)+reload-sync($self --list)")
+fi
+fzf --track --version >/dev/null 2>&1 && sync_opts+=(--track)
+
 # ctrl-x kills the Claude process itself: a dedicated session dies with its last
 # window, while a loose pane keeps the shell that hosted it. The reload waits a
 # beat so the supervisor has dropped the agent from `claude agents --json`.
-sel=$("$DIR/agents.sh" | fzf --ansi --delimiter='\t' --with-nth=5,6,7,8 \
+sel=$("${list_cmd[@]}" | fzf --ansi --delimiter='\t' --with-nth=5,6,7,8 \
   --reverse --cycle --header='Claude agents · enter: jump · ctrl-x: kill' \
   --preview='tmux capture-pane -ept {2}' --preview-window='up,70%,follow' \
   --bind="ctrl-x:execute-silent(kill {3})+reload(sleep 0.3; $self --list)" \
+  ${sync_opts[@]+"${sync_opts[@]}"} \
   ${extra_opts[@]+"${extra_opts[@]}"})
 
 [ -z "$sel" ] && exit 0
