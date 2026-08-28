@@ -46,7 +46,7 @@ list_cmd=("$self" --list)
 sync_opts=()
 now=$(date +%s)
 mtime=$(file_mtime "$cache")
-if [ -s "$cache" ] && [ -n "$mtime" ] && [ $((now - mtime)) -lt 600 ]; then
+if [ -s "$cache" ] && [ -n "$mtime" ] && [ $((now - mtime)) -lt 3600 ]; then
   list_cmd=(cat "$cache")
   sync_opts=(--bind "load:unbind(load)+reload-sync($self --list)")
 fi
