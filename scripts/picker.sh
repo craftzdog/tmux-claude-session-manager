@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Interactive picker for running Claude agents.
+# Interactive picker for running Codex agents.
 #
 #   picker.sh           fzf picker; on enter, jumps to the chosen agent.
 #   picker.sh --list    print the rows only (used by fzf's ctrl-x reload).
 #
-# Rows come from agents.sh, which pairs each running Claude with the tmux pane it
+# Rows come from agents.sh, which pairs each running Codex with the tmux pane it
 # occupies. Two kinds of row jump differently:
-#   dedicated  a Claude in a `claude-*` session this plugin launched — resumed in
+#   dedicated  a Codex in a `codex-*` session this plugin launched — resumed in
 #              the popup, over the window it was launched from.
-#   loose      a Claude running in any other pane — focused in place.
+#   loose      a Codex running in any other pane — focused in place.
 set -uo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
@@ -16,27 +16,27 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 [ "${1:-}" = '--list' ] && exec "$DIR/agents.sh"
 
-for tool in fzf jq claude; do
+for tool in fzf; do
   command -v "$tool" >/dev/null 2>&1 || {
-    tmux display-message "tmux-claude-session-manager: $tool is required for the picker"
+    tmux display-message "tmux-codex-session-manager: $tool is required for the picker"
     exit 0
   }
 done
 
 self="$DIR/picker.sh"
 export FZF_DEFAULT_OPTS=''
-export CLAUDE_PICKER="$self"
+export CODEX_PICKER="$self"
 
 # Arbitrary user fzf options (e.g. custom --bind or --preview-window)
 extra_opts=()
-fzf_options="$(get_tmux_option @claude_fzf_options '')"
+fzf_options="$(get_tmux_option @codex_fzf_options '')"
 [ -n "$fzf_options" ] && eval "extra_opts=($fzf_options)"
 
-# ctrl-x kills the Claude process itself: a dedicated session dies with its last
+# ctrl-x kills the Codex process itself: a dedicated session dies with its last
 # window, while a loose pane keeps the shell that hosted it. The reload waits a
-# beat so the supervisor has dropped the agent from `claude agents --json`.
+# beat so the process table and tmux pane state have settled.
 sel=$("$DIR/agents.sh" | fzf --ansi --delimiter='\t' --with-nth=5,6,7,8 \
-  --reverse --cycle --header='Claude agents · enter: jump · ctrl-x: kill' \
+  --reverse --cycle --header='Codex agents · enter: jump · ctrl-x: kill' \
   --preview='tmux capture-pane -ept {2}' --preview-window='up,70%,follow' \
   --bind="ctrl-x:execute-silent(kill {3})+reload(sleep 0.3; $self --list)" \
   ${extra_opts[@]+"${extra_opts[@]}"})
@@ -45,7 +45,7 @@ sel=$("$DIR/agents.sh" | fzf --ansi --delimiter='\t' --with-nth=5,6,7,8 \
 pane=$(printf '%s' "$sel" | cut -f2)
 kind=$(printf '%s' "$sel" | cut -f4)
 
-parent=$(tmux show-options -gqv @claude_parent 2>/dev/null)
+parent=$(tmux show-options -gqv @codex_parent 2>/dev/null)
 session=$(tmux display-message -p -t "$pane" '#{session_name}' 2>/dev/null)
 
 if [ "$kind" = loose ]; then
@@ -62,10 +62,10 @@ if [ "$kind" = loose ]; then
 fi
 
 # Move the parent client to the window the session was launched from (best-effort),
-# focus the chosen Claude's own window inside that session, then resume it in THIS
+# focus the chosen Codex window inside that session, then resume it in THIS
 # popup over the top. Falls back to resuming over the current window when
 # origin/parent are unknown.
-origin=$(tmux show-options -qv -t "$session" @claude_origin 2>/dev/null)
+origin=$(tmux show-options -qv -t "$session" @codex_origin 2>/dev/null)
 [ -n "$origin" ] && [ -n "$parent" ] &&
   tmux switch-client -c "$parent" -t "$origin" 2>/dev/null
 

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Return deterministic mtimes for either GNU or BSD stat invocation shapes.
+path="${!#}"
+case "$path" in
+*rollout-waiting.jsonl) printf '1140\n' ;;
+*rollout-working-main.jsonl) printf '900\n' ;;
+*rollout-working-child.jsonl) printf '1170\n' ;;
+*) exit 1 ;;
+esac

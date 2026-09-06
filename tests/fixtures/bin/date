@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Freeze current time so activity ages remain deterministic.
+if [ "${1:-}" = +%s ]; then
+  printf '1200\n'
+  exit 0
+fi
+exec /bin/date "$@"

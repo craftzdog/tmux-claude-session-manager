@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Return explicit Codex command options while allowing unrelated settings to use
+# their defaults from helpers.sh.
+if [ "${1:-}" = show-option ]; then
+  case "${!#}" in
+  @codex_command) printf '/usr/local/bin/codex\n' ;;
+  @codex_args) printf '%s\n' '--search' ;;
+  @codex_resume) [ -n "${TMUX_TEST_RESUME:-}" ] && printf '%s\n' "$TMUX_TEST_RESUME" ;;
+  esac
+  exit 0
+fi
+
+# Report an ordinary host whose codex- name would have triggered the old prefix
+# heuristic. The unset @codex_managed option must allow launch to proceed.
+if [ "${1:-}" = display-message ] && [ "${2:-}" = -p ]; then
+  printf 'codex-session-manager\n'
+  exit 0
+fi
+
+# Simulate a first launch for this directory.
+if [ "${1:-}" = has-session ]; then
+  exit 1
+fi
+
+# Record state-changing tmux calls as tab-separated argument vectors so quoting
+# boundaries can be asserted without executing tmux.
+case "${1:-}" in
+new-session | set-option | display-popup)
+  printf '%s' "$1" >>"$TMUX_TEST_LOG"
+  shift
+  for argument in "$@"; do
+    printf '\t%s' "$argument" >>"$TMUX_TEST_LOG"
+  done
+  printf '\n' >>"$TMUX_TEST_LOG"
+  ;;
+esac

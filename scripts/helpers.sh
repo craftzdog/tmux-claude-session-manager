@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared helpers for tmux-claude-session-manager.
+# Shared helpers for tmux-codex-session-manager.
 
 # get_tmux_option <option-name> <default>
 # Echoes the global tmux option value, or the default when unset/empty.
@@ -38,21 +38,21 @@ file_mtime() {
   stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null
 }
 
-# claude_transcript_mtime <session-id>
-# Epoch seconds of the last write to that Claude session's transcript — i.e. when
-# the agent last did anything. `claude agents --json` reports only `startedAt`,
-# never a last-activity time, so the transcript's mtime stands in for it.
-#
-# Found by glob so we never have to reproduce Claude's cwd -> project-slug
-# encoding. The path is an internal Claude Code detail and may move; an empty
-# result just renders the age column as '-'.
-claude_transcript_mtime() {
-  local base f
-  base="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-  for f in "$base"/projects/*/"$1".jsonl; do
-    [ -f "$f" ] && {
-      file_mtime "$f"
-      return
-    }
+# codex_rollout_records
+# Emits R<TAB>pid<TAB>path for rollout files held open by Codex processes.
+# lsof is optional: process and status discovery still work without activity age.
+codex_rollout_records() {
+  local base line pid
+  command -v lsof >/dev/null 2>&1 || return 0
+
+  base="${CODEX_HOME:-$HOME/.codex}/sessions/"
+  pid=''
+  lsof -Fn -c codex 2>/dev/null | while IFS= read -r line; do
+    case "$line" in
+    p[0-9]*) pid="${line#p}" ;;
+    n"$base"*.jsonl)
+      [ -n "$pid" ] && printf 'R\t%s\t%s\n' "$pid" "${line#n}"
+      ;;
+    esac
   done
 }

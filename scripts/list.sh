@@ -5,9 +5,8 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 . "$DIR/helpers.sh"
 
-prefix="$(get_tmux_option @claude_session_prefix 'claude-')"
-w="$(get_tmux_option @claude_popup_width '90%')"
-h="$(get_tmux_option @claude_popup_height '90%')"
+w="$(get_tmux_option @codex_popup_width '90%')"
+h="$(get_tmux_option @codex_popup_height '90%')"
 
 # The client that pressed the key, and the session it is currently attached to.
 # Looked up by exact client_name match rather than "first client anywhere that
@@ -17,6 +16,7 @@ h="$(get_tmux_option @claude_popup_height '90%')"
 me="${1:-}"
 my_session="$(tmux list-clients -F '#{client_name} #{session_name}' 2>/dev/null |
   awk -v me="$me" '$1 == me { print $2; exit }')"
+my_session_is_managed="$(tmux show-options -qv -t "$my_session" @codex_managed 2>/dev/null)"
 
 # open_picker <host>  — show the picker popup on <host>, or on the default client
 # when <host> is empty. Returns display-popup's own exit status.
@@ -28,8 +28,7 @@ open_picker() {
   fi
 }
 
-case "$my_session" in
-"$prefix"*)
+if [ "$my_session_is_managed" = 1 ]; then
   # Inside a session popup: close it, then reopen the picker on the outer client.
   #
   # display-popup returns to its caller *before* tmux finishes destroying the
@@ -42,7 +41,7 @@ case "$my_session" in
     tmux list-clients -F '#{session_name}' 2>/dev/null | grep -qx "$my_session" || break
     sleep 0.05
   done
-  host="$(tmux show-options -gqv @claude_parent 2>/dev/null)"
+  host="$(tmux show-options -gqv @codex_parent 2>/dev/null)"
   # A stale parent would make every retry fail; fall back to the default client.
   if [ -n "$host" ] && ! tmux list-clients -F '#{client_name}' 2>/dev/null | grep -qx "$host"; then
     host=''
@@ -58,12 +57,10 @@ case "$my_session" in
     sleep 0.1
   done
   exit "$rc"
-  ;;
-*)
+else
   # Normal case: this client is already the host, with no overlay to race.
   host="$me"
-  tmux set-option -g @claude_parent "$host"
-  ;;
-esac
+  tmux set-option -g @codex_parent "$host"
+fi
 
 open_picker "$host"

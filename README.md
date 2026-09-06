@@ -1,166 +1,174 @@
 # tmux-codex-session-manager
 
-Run many [Codex](https://openai.com/codex/) sessions across your
-projects, each in its own tmux session — then **list them, see which are done
-vs. still working, and jump to one** from a single popup.
+Run multiple [Codex CLI](https://developers.openai.com/codex/cli/) sessions
+across your projects, each in tmux, then see which agents need attention and
+jump to any of them from one popup.
 
-If you launch Codex per-directory (one nested session per project), you quickly
-end up with a dozen of them and no way to tell which are finished without opening
-each one. This plugin gives you:
+If you keep one Codex session open per project, checking every pane quickly
+becomes tedious. This plugin provides:
 
-- 🔢 **A central picker** (`prefix` + `u`) listing every running Codex agent —
-  several in one project, and any running loose in an ordinary pane.
-- 🟢 **Live status** per agent — `working` / `waiting` / `idle` — read straight
-  from `Codex agents --json`, so you instantly see which need you. No setup.
-- 👁️ **A live preview** of each agent's screen right in the picker.
-- 🎯 **Smart jump** — selecting an agent switches your client to the window it
-  was launched from, then resumes it in a popup over it.
-- 🚀 **A launcher** (`prefix` + `y`) that opens/attaches a Codex session for the
-  current directory.
-- ❌ **Quick kill** (`ctrl-x`) of a finished agent from the picker.
+- A central picker (`prefix` + `u`) for every Codex process running in tmux,
+  including sessions launched outside the plugin.
+- Live `working`, `waiting`, and `idle` status from Codex's terminal title.
+- A live `capture-pane` preview for the highlighted agent.
+- Smart navigation back to dedicated popup sessions or ordinary tmux panes.
+- A launcher (`prefix` + `y`) that restores the managed conversation for the
+  current pane's directory after its tmux session exits.
+- Quick process termination with `ctrl-x` inside the picker.
 
-Status needs no configuration. Codex publishes each agent's own state and
-the picker reads it — there are no hooks to install.
+Managed sessions configure Codex's documented `status` and `project` terminal
+title fields for reliable status detection. No hooks or app-server daemon are
+required.
 
 ## Prerequisites
 
-- **tmux ≥ 3.2** (for `display-popup`)
-- **[fzf](https://github.com/junegunn/fzf)** — the picker UI
-- **[jq](https://jqlang.org/)** — parses `Codex agents --json`
-- **[Codex](https://openai.com/codex)** ≥ 2.1.139 — for the
-  `Codex agents` command (`Codex --version` to check)
-- bash; macOS or Linux
+- tmux 3.2 or newer, for `display-popup`
+- [fzf](https://github.com/junegunn/fzf), for the picker UI
+- [Codex CLI](https://developers.openai.com/codex/cli/), available as `codex`
+- Bash, plus standard `ps`, `awk`, `sort`, and `stat` utilities
+- macOS or Linux
 
-## Install (tpm)
+`lsof` is optional. When available, the picker uses the mtimes of open Codex
+rollout files for the activity-age column. Without it, agents still appear and
+their age is shown as `-`.
 
-Add to `~/.tmux.conf` (or `~/.config/tmux/tmux.conf`):
+## Install with tpm
+
+Add this plugin to `~/.tmux.conf` or `~/.config/tmux/tmux.conf`:
 
 ```tmux
-set -g @plugin 'craftzdog/tmux-Codex-session-manager'
+set -g @plugin 'GiladTrachtenberg/codex-session-manager'
 ```
 
-Then hit `prefix` + <kbd>I</kbd> to install.
+Press `prefix` + <kbd>I</kbd> to install it.
 
-> **Keybinding note:** by default the plugin binds `prefix` + `y` (launch) and
-> `prefix` + `u` (list). If your config binds those elsewhere, either change the
-> options below, or make sure the plugin loads **after** your own bindings (put
-> `run '~/.tmux/plugins/tpm/tpm'` _after_ them) so the one you want wins.
+The plugin binds `prefix` + `y` and `prefix` + `u` by default. If those keys are
+already in use, change the options below or load this plugin in the order that
+should win.
 
-### Manual install
+### Manual installation
 
 ```sh
-git clone https://github.com/craftzdog/tmux-Codex-session-manager ~/clone/path
+git clone https://github.com/GiladTrachtenberg/codex-session-manager.git ~/clone/path
 ```
 
-Add to `~/.tmux.conf`, then reload (`prefix` + <kbd>r</kbd> or `tmux source ~/.tmux.conf`):
+Load the entrypoint from your tmux configuration, then reload tmux:
 
 ```tmux
-run-shell ~/clone/path/Codex_session_manager.tmux
+run-shell ~/clone/path/codex_session_manager.tmux
 ```
 
 ## Usage
 
-| Key            | Action                                                                          |
-| -------------- | ------------------------------------------------------------------------------- |
-| `prefix` + `y` | Launch (or re-attach to) a Codex session for the current directory, in a popup |
-| `prefix` + `u` | Open the agent picker                                                           |
+| Key | Action |
+| --- | --- |
+| `prefix` + `y` | Launch, reattach, or resume the managed Codex session for the current directory |
+| `prefix` + `u` | Open the agent picker |
 
 Inside the picker:
 
-| Key                       | Action                                                |
-| ------------------------- | ----------------------------------------------------- |
-| `enter`                   | Jump to the agent (see [How it works](#how-it-works)) |
-| `ctrl-x`                  | Kill the highlighted agent                            |
-| `↑` / `↓`, type to filter | fzf navigation                                        |
+| Key | Action |
+| --- | --- |
+| `enter` | Jump to the highlighted agent |
+| `ctrl-x` | Terminate the highlighted Codex process and reload the list |
+| `↑` / `↓` | Move through agents |
+| Any text | Fuzzy-filter the list |
 
-Agents needing your attention (`waiting`, `idle`) sort to the top.
-
-Every running Codex gets its own row — the picker identifies each by its process,
-not by its tmux session. So several agents in one project all show up separately,
-as does a Codex you started by hand in an ordinary pane.
+Agents that are waiting or idle sort above agents that are still working. Each
+native Codex process gets its own row, so several agents in one project remain
+independently selectable.
 
 ## Options
 
-Set any of these before the plugin loads (defaults shown):
+Set options before the plugin is loaded. Defaults are shown below:
 
 ```tmux
-set -g @Codex_launch_key     'y'        # prefix key: launch/open for current dir
-set -g @Codex_list_key       'u'        # prefix key: open the picker
-set -g @Codex_command        'Codex'   # command run in new sessions
-set -g @Codex_args           ''         # extra args appended to the command
-set -g @Codex_session_prefix 'Codex-'  # tmux session name prefix
-set -g @Codex_popup_width     '90%'     # popup width
-set -g @Codex_popup_height    '90%'     # popup height
-set -g @Codex_fzf_options    ''         # extra options passed to the fzf picker
+# Configure the two plugin key bindings.
+set -g @codex_launch_key      'y'
+set -g @codex_list_key        'u'
+
+# Configure the launched command and any additional Codex CLI arguments.
+set -g @codex_command         'codex'
+set -g @codex_args            ''
+
+# Resume the last saved Codex conversation after a managed tmux session exits.
+set -g @codex_resume          'on'
+
+# Configure managed tmux session names and popup dimensions.
+set -g @codex_session_prefix  'codex-'
+set -g @codex_popup_width     '90%'
+set -g @codex_popup_height    '90%'
+
+# Append custom options to the fzf invocation.
+set -g @codex_fzf_options     ''
 ```
 
-For example, to skip permission prompts in launched sessions:
+For example, to bypass Codex approvals and sandboxing in an environment that is
+already externally isolated:
 
 ```tmux
-set -g @Codex_args '--dangerously-skip-permissions'
+set -g @codex_args '--dangerously-bypass-approvals-and-sandbox'
 ```
 
-### Customizing the fzf picker
+That flag is intentionally dangerous. See the
+[official Codex command reference](https://learn.chatgpt.com/docs/developer-commands?surface=cli)
+before enabling it.
 
-`@Codex_fzf_options` is passed straight to `fzf`, so you can add your own bindings.
+### Customizing fzf
 
-Here is a vim keybinding example:
+`@codex_fzf_options` is passed to `fzf`. The picker exports its executable path
+as `$CODEX_PICKER`, which custom reload bindings can use:
 
 ```tmux
-set -g @Codex_fzf_options "\
+set -g @codex_fzf_options "\
   --prompt 'nav> ' \
   --bind 'j:down' \
   --bind 'k:up' \
   --bind 'q:abort' \
-  --bind 'x:execute-silent(kill {3})+reload(sleep 0.3; \$Codex_PICKER --list)' \
+  --bind 'x:execute-silent(kill {3})+reload(sleep 0.3; \$CODEX_PICKER --list)' \
   --bind 'i:unbind(j,k,q,i,a,x)+change-prompt(filter> )' \
   --bind 'a:unbind(j,k,q,i,a,x)+change-prompt(filter> )' \
   --bind 'esc:rebind(j,k,q,i,a,x)+change-prompt(nav> )'"
 ```
 
-The picker opens in **nav** mode:
-
-| Key       | Action                                                  |
-| --------- | ------------------------------------------------------- |
-| `j` / `k` | move down / up                                          |
-| `i` / `a` | switch to **filter** mode — type to fuzzy-match         |
-| `x`       | kill the highlighted agent (like the built-in `ctrl-x`) |
-| `q`       | close the picker                                        |
-| `enter`   | jump to the agent (both modes)                          |
-| `esc`     | filter mode → back to nav                               |
-
-Only the bound keys are special in nav mode; any other key still filters as you
-type. `x` reloads the list through `$Codex_PICKER`, a path the picker exports for
-exactly this — write it as `\$Codex_PICKER` inside the double-quoted value above
-so tmux stores a literal `$` (in a single-quoted value, use a bare
-`$Codex_PICKER`).
+Write `\$CODEX_PICKER` inside a double-quoted tmux value so tmux stores the
+literal variable reference.
 
 ## How it works
 
-- The **launcher** creates a detached `Codex-<hash-of-dir>` tmux session running
-  `Codex`, records the window it came from in `@Codex_origin`, and attaches to
-  it in a popup.
-- **`Codex agents --json`** is the source of truth for what is running and how it
-  is doing. Each Codex session self-reports its state (`busy` / `waiting` /
-  `idle`) to a supervisor daemon, which that command publishes. Nothing here scans
-  processes for a `Codex` command name — on macOS a pane reports its parent shell,
-  never the `Codex` child running inside it.
-- **`agents.sh`** pairs each running Codex with the tmux pane it occupies by
-  joining `pid` → `tty` → pane. That join is why identity is the Codex _process_
-  rather than the tmux session, and therefore why several agents in one project
-  each get their own row. It costs three subprocesses per render, whatever the
-  number of sessions or panes.
-- The **age column** is the mtime of the agent's transcript — its last sign of
-  life. `Codex agents --json` reports only `startedAt`, never a last-activity
-  time. A brand-new agent that has yet to take a turn shows `-`.
-- The **picker** renders those rows with a live `capture-pane` preview. On `enter`
-  a **dedicated** agent (in a `Codex-*` session) resumes in the popup over the
-  window it was launched from, while a **loose** one (any other pane) is focused in
-  place. `ctrl-x` kills the Codex process itself: a dedicated session dies with
-  its last window, and a loose pane keeps the shell that hosted it.
-- Pressing `prefix` + `u` **from inside a session popup** detaches that popup
-  first (closing it), then reopens the picker full-size on the outer host client —
-  so you never end up with a cramped popup-in-popup.
+- The launcher creates `codex-<hash-of-directory>`, records its origin window in
+  `@codex_origin`, and opens the session in a popup. Repeated launches for the
+  same directory reattach to the existing tmux session. If that tmux session has
+  ended, the next launch runs `codex resume --last`, which Codex scopes to the
+  current working directory. Set `@codex_resume` to `off` to always start fresh.
+- Resume markers live under
+  `${XDG_STATE_HOME:-$HOME/.local/state}/tmux-codex-session-manager`. They store
+  only the project-path hash; Codex remains responsible for conversation data.
+- Managed launches pass `tui.terminal_title=["status","project"]` to Codex.
+  `agents.sh` interprets the attention label as `waiting`, Codex's spinner as
+  `working`, and a plain project title as `idle`.
+- Discovery finds native `codex` processes with `ps`, maps PID to TTY, and joins
+  that TTY to `tmux list-panes`. It does not rely on `pane_current_command`,
+  which commonly reports Codex's Node wrapper instead of the native process.
+- When `lsof` is installed, one pass identifies rollout files held by each Codex
+  process. Only file paths and mtimes are used; transcript contents are never
+  read. The newest main or subagent rollout mtime becomes the activity age.
+- Plugin-created sessions carry an explicit `@codex_managed` marker and reopen
+  in a popup over their recorded origin. A normal session is never treated as
+  managed merely because its name begins with `codex-`; loose Codex processes
+  are focused in their existing tmux pane.
+- Opening the picker from inside a managed popup first closes that popup and
+  waits for tmux teardown, preventing a non-interactive popup-inside-popup race.
+
+## Development
+
+Run the fixture-based discovery regression test and syntax checks:
+
+```sh
+bash tests/agents_test.sh
+bash tests/launch_test.sh
+bash -n codex_session_manager.tmux scripts/*.sh tests/*.sh tests/fixtures/bin/* tests/fixtures/launch-bin/*
+```
 
 ## License
 

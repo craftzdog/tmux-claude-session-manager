@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Return no user overrides requested by discovery helpers.
+if [ "${1:-}" = show-option ]; then
+  exit 0
+fi
+
+# Mirror the tagged list-panes format consumed by agents.sh. The third process
+# deliberately uses a codex- session name without the explicit managed marker.
+if [ "${1:-}" = list-panes ]; then
+  printf '%s\n' \
+    $'T\t/dev/ttys001\t%1\tcodex-alpha\tcodex-alpha:0.0\t/home/tester/project-a\t1\t[ ! ] Action Required | project-a' \
+    $'T\t/dev/pts/2\t%2\tteam\tteam:1.0\t/srv/project-b\t\t⠴ project-b' \
+    $'T\t/dev/ttys003\t%3\tcodex-user-project\tcodex-user-project:2.0\t/home/tester/project-c\t\tproject-c' \
+    $'T\t/dev/ttys004\t%4\tshell\tshell:3.0\t/home/tester/helper\t\t⠙ helper'
+fi

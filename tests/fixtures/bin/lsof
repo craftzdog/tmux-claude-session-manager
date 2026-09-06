@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Simulate a host without rollout enrichment while keeping process discovery on.
+if [ "${CODEX_TEST_DISABLE_LSOF:-0}" = 1 ]; then
+  exit 0
+fi
+
+# Associate one transcript with the waiting process and two main/subagent
+# transcripts with the working process so latest-mtime selection is exercised.
+printf '%s\n' \
+  'p101' \
+  'n/home/tester/.codex/sessions/2026/08/30/rollout-waiting.jsonl' \
+  'p202' \
+  'n/home/tester/.codex/sessions/2026/08/30/rollout-working-main.jsonl' \
+  'n/home/tester/.codex/sessions/2026/08/30/rollout-working-child.jsonl' \
+  'p303'

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Provide native Codex processes, unrelated processes, and a Codex helper whose
+# executable name must not be mistaken for an interactive agent.
+printf '%s\n' \
+  '101 ttys001 /opt/codex/bin/codex' \
+  '202 pts/2 /usr/local/bin/codex' \
+  '303 ttys003 codex' \
+  '404 ttys004 /opt/codex/bin/codex-code-mode-host' \
+  '505 ttys005 node'
